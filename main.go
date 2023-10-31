@@ -12,11 +12,12 @@ import (
 
 const e = 2.71828182845904523536
 
-func getBounds() (a float64, b float64) {
+func getBounds() (float64, float64) {
 	for {
-		fmt.Println("Введите нижнюю границу интегрирования: ")
+		var a, b float64 = 0, 5
+		fmt.Println("Введите нижнюю границу интегрирования (по умолчанию - 0): ")
 		fmt.Scanf("%f", &a)
-		fmt.Println("Введите верхнюю границу интегрирования: ")
+		fmt.Println("Введите верхнюю границу интегрирования(по умолчанию - 5): ")
 		fmt.Scanf("%f", &b)
 		if a == b {
 			fmt.Println("Границы не могут быть равны!")
@@ -30,17 +31,22 @@ func getBounds() (a float64, b float64) {
 }
 
 func getExpression() (expr string) {
-	fmt.Println("Введите интегрируемое выражение: ")
+	fmt.Println("Введите интегрируемое выражение (по умолчанию \"e^(-((x^2)/2))\"): ")
 	reader := bufio.NewReader(os.Stdin)
 	expr, _ = reader.ReadString('\n')
 	expr = strings.ReplaceAll(expr, " ", "")
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		expr = "e^(-((x^2)/2))"
+	}
 	return expr
 }
 
-func getIterations() (n int) {
+func getIterations() int {
 	for {
-		fmt.Println("Введите количество итераций: ")
-		fmt.Scan(&n)
+		var n int = 10000
+		fmt.Println("Введите количество итераций (по умолчанию - 10000): ")
+		fmt.Scanf("%v", &n)
 		if n%2 == 1 {
 			fmt.Println("Количество итераций должно быть чётным!")
 			continue
@@ -58,6 +64,10 @@ func integrate(a float64, b float64, expression string, n int) (float64, error) 
 	parser.SetDoubleVariableValue("e", e)
 	delta := (b - a) / float64(n)
 	var answer float64
+	err := parser.CompileExpression()
+	if err != nil {
+		return 0, errors.New(err.Error())
+	}
 	for x, i := a, 0; i < n; x, i = x+delta, i+1 {
 		parser.SetDoubleVariableValue("x", x)
 		var arg float64
@@ -68,16 +78,13 @@ func integrate(a float64, b float64, expression string, n int) (float64, error) 
 		} else if i%2 == 0 {
 			arg = 2
 		}
-		err := parser.CompileExpression()
-		if err != nil {
-			return 0, errors.New(err.Error())
-		}
 		value := parser.GetEvaluatedValue()
 		answer += arg * value
 	}
 	answer = answer * (delta / 3)
 	return answer, nil
 }
+
 func main() {
 	a, b := getBounds()
 	expression := getExpression()
@@ -88,20 +95,8 @@ func main() {
 		return
 	}
 	fmt.Printf("Значение интеграла: %f\n", answer)
-	fmt.Println(expression)
 	if expression == "e^(-((x^2)/2))" || expression == "e^-((x^2)/2)" {
-		lpl := 0.398942280401 * answer
-		fmt.Printf("Значение нормированной функции Лапласа: %f", lpl)
+		var lpl float64 = 0.398942280401 * answer
+		fmt.Printf("Значение нормированной функции Лапласа: %f\n", lpl)
 	}
-	// parser := exprtk.NewExprtk()
-	// defer parser.Delete()
-	// parser.SetExpression("2.7^(-((x^2)/2))")
-	// parser.AddDoubleVariable("x")
-	// parser.SetDoubleVariableValue("x", 5)
-	// err := parser.CompileExpression()
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// }
-	// value := parser.GetEvaluatedValue()
-	// fmt.Printf("%f", value)
 }
